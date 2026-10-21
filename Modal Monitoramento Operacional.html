@@ -1,0 +1,997 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Modal Monitoramento Operacional</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --bg:          #F2F4F7;
+  --surface:     #FFFFFF;
+  --surface2:    #F7F8FA;
+  --border:      #E1E5EC;
+  --ink:         #1A1D23;
+  --mid:         #4A5165;
+  --muted:       #8A92A8;
+  --accent:      #1A4FD6;
+  --accent-lt:   #EBF0FB;
+
+  --ok:          #16A34A;
+  --ok-lt:       #DCFCE7;
+  --warn:        #D97706;
+  --warn-lt:     #FEF3C7;
+  --crit:        #DC2626;
+  --crit-lt:     #FEE2E2;
+
+  --int-bg:      #FFFBEB;
+  --int-bd:      #FCD34D;
+  --int-txt:     #92400E;
+  --cli-bg:      #EFF6FF;
+  --cli-bd:      #93C5FD;
+  --cli-txt:     #1E40AF;
+
+  --radius:      8px;
+  --shadow-lg:   0 8px 30px rgba(26,29,35,.18), 0 2px 8px rgba(26,29,35,.10);
+}
+
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* ── FUNDO (simula o sistema) ─────────────────────── */
+.bg-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  text-align: center;
+}
+.fake-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 860px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  flex-wrap: wrap;
+}
+.fake-col { font-size: 12.5px; }
+.fake-col strong { display: block; color: var(--ink); font-weight: 600; }
+.fake-col span { color: var(--muted); font-size: 11.5px; }
+.fake-col.grow { flex: 1; }
+
+/* semaphore trigger button */
+.semaph-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--crit-lt);
+  border: 1px solid var(--crit);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--crit);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+}
+.semaph-btn:hover { background: var(--crit); color: #fff; }
+.semaph-btn .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--crit);
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.semaph-btn:hover .dot { background: #fff; }
+
+/* ── OVERLAY ──────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,12,20,.6);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px 32px;
+  overflow-y: auto;
+}
+.overlay[hidden] { display: none !important; }
+
+/* ── MODAL ────────────────────────────────────────── */
+.modal {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 720px;
+  margin: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ───────────────────────────────────────── */
+.mh {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mh-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.mh-info { flex: 1; min-width: 0; }
+.mh-num {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+  margin-bottom: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.mh-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  text-wrap: balance;
+}
+.mh-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chip-crit { background: var(--crit-lt); color: var(--crit); }
+.chip-warn { background: var(--warn-lt); color: var(--warn); }
+.chip-ok   { background: var(--ok-lt);   color: var(--ok); }
+.chip-blue { background: var(--accent-lt); color: var(--accent); }
+.chip-grey { background: var(--surface2); color: var(--mid); border: 1px solid var(--border); }
+
+.mh-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  line-height: 1;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.mh-close:hover { background: var(--surface2); color: var(--ink); }
+
+/* SLA bar inside header */
+.sla-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  background: var(--crit-lt);
+  border: 1px solid var(--crit);
+  border-radius: 6px;
+  padding: 7px 12px;
+}
+.sla-strip.warn { background: var(--warn-lt); border-color: var(--warn); }
+.sla-strip.ok   { background: var(--ok-lt);   border-color: var(--ok); }
+.sla-label-txt { font-size: 11px; font-weight: 600; color: var(--crit); flex-shrink: 0; }
+.sla-strip.warn .sla-label-txt { color: var(--warn); }
+.sla-strip.ok   .sla-label-txt { color: var(--ok); }
+.sla-bar-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(0,0,0,.1);
+  overflow: hidden;
+}
+.sla-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--crit);
+  transition: width .5s;
+}
+.sla-strip.warn .sla-bar-fill { background: var(--warn); }
+.sla-strip.ok   .sla-bar-fill { background: var(--ok); }
+.sla-remain { font-size: 11px; font-weight: 700; color: var(--crit); font-variant-numeric: tabular-nums; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; }
+.sla-strip.warn .sla-remain { color: var(--warn); }
+.sla-strip.ok   .sla-remain { color: var(--ok); }
+
+/* ── TABS ─────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 24px;
+  gap: 0;
+}
+.tab {
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-family: inherit;
+  transition: color .15s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── BODY ─────────────────────────────────────────── */
+.mbody {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 280px);
+}
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── FILTER BAR ───────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.filter-chip {
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--mid);
+  font-family: inherit;
+  transition: all .15s;
+}
+.filter-chip.on { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+
+/* ── TIMELINE ─────────────────────────────────────── */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-item {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  position: relative;
+}
+.tl-line {
+  position: absolute;
+  left: 63px;
+  top: 22px;
+  bottom: -8px;
+  width: 2px;
+  background: var(--border);
+}
+.tl-item:last-child .tl-line { display: none; }
+.tl-dot {
+  position: absolute;
+  left: 57px;
+  top: 16px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--border);
+  background: var(--muted);
+  z-index: 1;
+}
+.tl-dot.crit { background: var(--crit); box-shadow: 0 0 0 2px var(--crit); }
+.tl-dot.warn { background: var(--warn); box-shadow: 0 0 0 2px var(--warn); }
+.tl-dot.ok   { background: var(--ok);   box-shadow: 0 0 0 2px var(--ok); }
+
+.tl-time {
+  padding: 12px 0;
+  padding-right: 18px;
+  text-align: right;
+}
+.tl-time-hr {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mid);
+  font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+.tl-time-dt { font-size: 10px; color: var(--muted); }
+
+.tl-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 8px 0 16px 20px;
+}
+.tl-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.tl-type { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.tl-op { font-size: 11px; color: var(--muted); margin-left: auto; }
+.tl-op strong { color: var(--mid); }
+
+.obs-block {
+  border-radius: 6px;
+  padding: 8px 11px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.obs-block + .obs-block { margin-top: 5px; }
+.obs-block.int {
+  background: var(--int-bg);
+  border-left: 3px solid var(--int-bd);
+}
+.obs-block.cli {
+  background: var(--cli-bg);
+  border-left: 3px solid var(--cli-bd);
+}
+.obs-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 3px;
+}
+.obs-block.int .obs-lbl { color: var(--int-txt); }
+.obs-block.cli .obs-lbl { color: var(--cli-txt); }
+
+/* empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--muted);
+}
+.empty-state svg { opacity: .35; margin-bottom: 10px; }
+.empty-state p { margin: 0; font-size: 12.5px; }
+
+/* ── FORM ─────────────────────────────────────────── */
+.form-section {
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.form-section.int { background: var(--int-bg); border: 1px solid var(--int-bd); }
+.form-section.cli { background: var(--cli-bg); border: 1px solid var(--cli-bd); }
+.fs-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.form-section.int .fs-title { color: var(--int-txt); }
+.form-section.cli .fs-title { color: var(--cli-txt); }
+.vis-tag {
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.vis-tag.int { background: #FDE68A; color: #92400E; }
+.vis-tag.cli { background: #BFDBFE; color: #1E40AF; }
+
+.frow {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.frow.cols2 { grid-template-columns: 1fr 1fr; }
+.frow.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.frow.col1  { grid-template-columns: 1fr; }
+.field label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--ink);
+  outline: none;
+  transition: border-color .15s;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 80px; }
+.field-hint { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+
+/* auto fields */
+.auto-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.auto-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: var(--mid);
+}
+.auto-pill span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; }
+
+/* footer */
+.mfooter {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: var(--surface);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+  transition: all .15s;
+}
+.btn-ghost { background: var(--surface2); color: var(--mid); border-color: var(--border); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { opacity: .9; }
+
+/* ── VISÃO CLIENTE ────────────────────────────────── */
+.cli-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+.cli-notice p { margin: 0; font-size: 12px; color: var(--mid); line-height: 1.6; }
+
+.cli-steps { display: flex; flex-direction: column; gap: 10px; }
+.cli-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 14px;
+  transition: border-color .15s;
+}
+.cli-step:hover { border-color: var(--accent); }
+.cli-ico {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.cli-ico.warn { background: var(--warn-lt); }
+.cli-ico.ok   { background: var(--ok-lt); }
+.cli-body { flex: 1; min-width: 0; }
+.cli-msg { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.cli-dt { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cli-sub { font-size: 12px; color: var(--mid); margin-top: 4px; line-height: 1.5; }
+
+/* ── SUCCESS TOAST ────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ok);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  opacity: 0;
+  transition: all .3s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 600px) {
+  .frow.cols3 { grid-template-columns: 1fr 1fr; }
+  .frow.cols2 { grid-template-columns: 1fr; }
+  .modal { border-radius: 8px; }
+  body { padding-block: 16px; }
+  .tabs { padding: 0 12px; }
+  .mbody { padding: 16px; }
+  .mh { padding: 16px 16px 12px; }
+  .mfooter { padding: 12px 16px; }
+}
+</style>
+
+<!-- Contexto: simula grid do sistema -->
+<p class="bg-hint">Clique no botão de monitoramento na linha do pedido para abrir o modal</p>
+
+<div class="fake-row">
+  <div class="fake-col">
+    <strong style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">PDR-58291</strong>
+    <span>20/10/2026</span>
+  </div>
+  <div class="fake-col grow">
+    <strong>Escritório Alves &amp; Costa</strong>
+    <span>1º RI São Paulo/SP · RGI</span>
+  </div>
+  <div class="fake-col">
+    <span class="chip chip-warn">Em Exigência</span>
+  </div>
+  <button class="semaph-btn" onclick="openModal()">
+    <span class="dot"></span>
+    Monitoramento · 3 ações
+  </button>
+</div>
+
+<!-- ── MODAL ─────────────────────────────────────────── -->
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+    <!-- HEADER -->
+    <div class="mh">
+      <div class="mh-top">
+        <div class="mh-info">
+          <div class="mh-num">PDR-58291</div>
+          <div class="mh-title" id="modal-title">Escritório Alves &amp; Costa</div>
+          <div class="mh-meta">
+            <span class="chip chip-warn">Em Exigência</span>
+            <span class="chip chip-grey">RGI</span>
+            <span class="chip chip-grey">1º RI São Paulo/SP</span>
+          </div>
+        </div>
+        <button class="mh-close" onclick="closeModal()" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="sla-strip" id="sla-strip">
+        <span class="sla-label-txt">🔴 SLA Crítico</span>
+        <div class="sla-bar-track"><div class="sla-bar-fill" id="sla-fill" style="width:12%"></div></div>
+        <span class="sla-remain" id="sla-remain">1h 48min restantes</span>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" id="tab-hist" onclick="goTab('hist')">Histórico</button>
+      <button class="tab"        id="tab-nova" onclick="goTab('nova')">Nova Entrada</button>
+      <button class="tab"        id="tab-cli"  onclick="goTab('cli')">Visão do Cliente</button>
+    </div>
+
+    <!-- BODY -->
+    <div class="mbody">
+
+      <!-- ── HISTÓRICO ──────────────────────────────── -->
+      <div class="panel active" id="panel-hist">
+        <div class="filter-bar">
+          <button class="filter-chip on" onclick="toggleFilter(this,'todos')">Todos</button>
+          <button class="filter-chip"    onclick="toggleFilter(this,'cliente')">Contato com Cliente</button>
+          <button class="filter-chip"    onclick="toggleFilter(this,'cartorio')">Contato com Cartório</button>
+          <button class="filter-chip"    onclick="toggleFilter(this,'pagamento')">Pagamento</button>
+        </div>
+
+        <div class="timeline" id="timeline">
+
+          <!-- entrada 1 -->
+          <div class="tl-item" data-tag="cliente">
+            <div class="tl-line"></div>
+            <div class="tl-dot crit"></div>
+            <div class="tl-time">
+              <div class="tl-time-hr">09:42</div>
+              <div class="tl-time-dt">20/10/26</div>
+            </div>
+            <div>
+              <div class="tl-card">
+                <div class="tl-card-top">
+                  <span class="tl-type">Contato com Cliente</span>
+                  <span class="chip chip-grey" style="font-size:10.5px">WhatsApp</span>
+                  <span class="tl-op">por <strong>Priscilla P.</strong></span>
+                </div>
+                <div class="obs-block int">
+                  <div class="obs-lbl">🔒 Interno — somente Operações</div>
+                  Liguei para o cliente solicitando o envio da certidão atualizada. Cliente informou que está resolvendo com o cartório de origem. Aguardar até amanhã 14h.
+                </div>
+                <div class="obs-block cli">
+                  <div class="obs-lbl">👁 Mensagem ao cliente</div>
+                  Sua solicitação requer documentação complementar. Entraremos em contato em breve com as orientações necessárias.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- entrada 2 -->
+          <div class="tl-item" data-tag="cartorio">
+            <div class="tl-line"></div>
+            <div class="tl-dot warn"></div>
+            <div class="tl-time">
+              <div class="tl-time-hr">08:15</div>
+              <div class="tl-time-dt">20/10/26</div>
+            </div>
+            <div>
+              <div class="tl-card">
+                <div class="tl-card-top">
+                  <span class="tl-type">Contato com Cartório</span>
+                  <span class="chip chip-grey" style="font-size:10.5px">E-mail</span>
+                  <span class="tl-op">por <strong>João M.</strong></span>
+                </div>
+                <div class="obs-block int">
+                  <div class="obs-lbl">🔒 Interno — somente Operações</div>
+                  E-mail enviado ao 1º RI SP perguntando status da exigência. Protocolo cartório: 2024-SP-88821. Aguardando retorno.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- entrada 3 -->
+          <div class="tl-item" data-tag="pagamento">
+            <div class="tl-dot"></div>
+            <div class="tl-time">
+              <div class="tl-time-hr">16:30</div>
+              <div class="tl-time-dt">19/10/26</div>
+            </div>
+            <div>
+              <div class="tl-card">
+                <div class="tl-card-top">
+                  <span class="tl-type">Acompanhamento de Pagamento</span>
+                  <span class="chip chip-grey" style="font-size:10.5px">Sistema</span>
+                  <span class="tl-op">por <strong>Carla T.</strong></span>
+                </div>
+                <div class="obs-block int">
+                  <div class="obs-lbl">🔒 Interno — somente Operações</div>
+                  Boleto de emolumentos emitido — R$ 1.248,00. Vencimento 21/10. Aguardando confirmação de pagamento no sistema.
+                </div>
+                <div class="obs-block cli">
+                  <div class="obs-lbl">👁 Mensagem ao cliente</div>
+                  O boleto de emolumentos foi emitido e está disponível no portal. Efetue o pagamento até a data de vencimento.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /timeline -->
+      </div><!-- /panel-hist -->
+
+      <!-- ── NOVA ENTRADA ────────────────────────────── -->
+      <div class="panel" id="panel-nova">
+
+        <!-- campos automáticos -->
+        <div class="auto-row">
+          <div class="auto-pill"><span>Data/hora</span> 20/10/2026 16:30</div>
+          <div class="auto-pill"><span>Operador</span> Priscilla P.</div>
+          <div class="auto-pill" style="color:var(--muted);font-size:11px">Preenchidos automaticamente</div>
+        </div>
+
+        <!-- seção interna -->
+        <div class="form-section int">
+          <div class="fs-title">🔒 Informações Internas <span class="vis-tag int">Somente Operações</span></div>
+
+          <div class="frow cols3">
+            <div class="field">
+              <label>Tipo de Ação <span style="color:var(--crit)">*</span></label>
+              <select id="f-tipo">
+                <option value="">Selecionar…</option>
+                <option>Contato com Cliente</option>
+                <option>Contato com Cartório</option>
+                <option>Acompanhamento de Pagamento</option>
+                <option>Retorno de Exigência</option>
+                <option>Verificação de Prazo</option>
+                <option>Outros</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Canal <span style="color:var(--crit)">*</span></label>
+              <select id="f-canal">
+                <option value="">Selecionar…</option>
+                <option>WhatsApp</option>
+                <option>Telefone</option>
+                <option>E-mail</option>
+                <option>Sistema</option>
+                <option>Presencial</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nome do Contato</label>
+              <input id="f-contato" type="text" placeholder="Com quem foi o contato">
+            </div>
+          </div>
+
+          <div class="frow col1">
+            <div class="field">
+              <label>Observação Interna <span style="color:var(--crit)">*</span></label>
+              <textarea id="f-obs" placeholder="Descreva o que foi tratado, próximos passos e informações relevantes para o time de Operações…"></textarea>
+              <div class="field-hint">Não será exibido ao cliente.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- seção cliente -->
+        <div class="form-section cli">
+          <div class="fs-title">👁 Mensagem ao Cliente <span class="vis-tag cli">Visível no portal do cliente</span></div>
+          <div class="frow col1">
+            <div class="field">
+              <label>Mensagem Padronizada</label>
+              <select id="f-msg">
+                <option value="">— Nenhuma mensagem ao cliente nesta ação —</option>
+                <option>Aguardando documentação complementar do cliente.</option>
+                <option>O boleto de emolumentos foi emitido e está disponível no portal.</option>
+                <option>Sua solicitação está sendo analisada pelo cartório.</option>
+                <option>Identificamos uma exigência. Entraremos em contato com orientações.</option>
+                <option>Seu pedido foi concluído com sucesso.</option>
+              </select>
+              <div class="field-hint">Opcional. Selecione apenas se esta ação gerar uma atualização visível ao cliente.</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /panel-nova -->
+
+      <!-- ── VISÃO DO CLIENTE ────────────────────────── -->
+      <div class="panel" id="panel-cli">
+        <div class="cli-notice">
+          <span style="font-size:18px;flex-shrink:0">👁</span>
+          <p>Esta é a visão que o cliente vê no portal dele. Apenas as <strong>mensagens padronizadas</strong> aparecem aqui — observações internas são ocultadas.</p>
+        </div>
+        <div class="cli-steps">
+          <div class="cli-step">
+            <div class="cli-ico warn">📋</div>
+            <div class="cli-body">
+              <div class="cli-msg">Documentação complementar necessária.</div>
+              <div class="cli-dt">20/10/2026 às 09:42</div>
+              <div class="cli-sub">Sua solicitação requer documentação complementar. Entraremos em contato em breve com as orientações necessárias.</div>
+            </div>
+          </div>
+          <div class="cli-step">
+            <div class="cli-ico ok">💳</div>
+            <div class="cli-body">
+              <div class="cli-msg">Boleto de emolumentos disponível.</div>
+              <div class="cli-dt">19/10/2026 às 16:30</div>
+              <div class="cli-sub">O boleto de emolumentos foi emitido e está disponível no portal. Efetue o pagamento até a data de vencimento.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /mbody -->
+
+    <!-- FOOTER -->
+    <div class="mfooter" id="mfooter">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvar()">Salvar Ação</button>
+    </div>
+
+  </div><!-- /modal -->
+</div><!-- /overlay -->
+
+<div class="toast" id="toast">✓ Ação registrada com sucesso</div>
+
+<script>
+// ── OPEN / CLOSE ────────────────────────────────────────
+function openModal() {
+  document.getElementById('overlay').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('overlay').hidden = true;
+  document.body.style.overflow = '';
+}
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeModal();
+});
+
+// ── TABS ────────────────────────────────────────────────
+function goTab(id) {
+  ['hist','nova','cli'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === id);
+    document.getElementById('panel-' + t).classList.toggle('active', t === id);
+  });
+  // footer: oculta no histórico e visão cliente
+  document.getElementById('mfooter').hidden = (id !== 'nova');
+}
+
+// ── FILTROS ─────────────────────────────────────────────
+function toggleFilter(btn, tag) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.tl-item').forEach(item => {
+    item.style.display = (tag === 'todos' || item.dataset.tag === tag) ? '' : 'none';
+  });
+}
+
+// ── SALVAR ──────────────────────────────────────────────
+function salvar() {
+  const tipo  = document.getElementById('f-tipo').value;
+  const canal = document.getElementById('f-canal').value;
+  const obs   = document.getElementById('f-obs').value.trim();
+
+  if (!tipo || !canal || !obs) {
+    const missing = [];
+    if (!tipo)  missing.push('Tipo de Ação');
+    if (!canal) missing.push('Canal');
+    if (!obs)   missing.push('Observação Interna');
+    // mostra erro inline (sem alert)
+    showError('Preencha os campos obrigatórios: ' + missing.join(', ') + '.');
+    return;
+  }
+
+  // Insere no topo da timeline
+  const msg   = document.getElementById('f-msg').value;
+  const contato = document.getElementById('f-contato').value;
+  inserirEntrada(tipo, canal, contato, obs, msg);
+
+  // Limpa o form
+  ['f-tipo','f-canal','f-contato','f-obs','f-msg'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  clearError();
+
+  // Atualiza visão do cliente se tinha mensagem
+  if (msg) inserirClienteStep(tipo, msg);
+
+  // Vai para histórico e mostra toast
+  goTab('hist');
+  showToast();
+}
+
+function inserirEntrada(tipo, canal, contato, obs, msg) {
+  const tl = document.getElementById('timeline');
+  const now = new Date();
+  const hr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const dt = now.getDate().toString().padStart(2,'0') + '/' + (now.getMonth()+1).toString().padStart(2,'0') + '/' + String(now.getFullYear()).slice(-2);
+
+  const msgBlock = msg ? `<div class="obs-block cli"><div class="obs-lbl">👁 Mensagem ao cliente</div>${msg}</div>` : '';
+  const contBlock = contato ? `<span class="chip chip-grey" style="font-size:10.5px">${contato}</span>` : '';
+
+  const html = `
+    <div class="tl-item" data-tag="${tipoTag(tipo)}" style="opacity:0;transition:opacity .4s">
+      <div class="tl-line"></div>
+      <div class="tl-dot ok"></div>
+      <div class="tl-time">
+        <div class="tl-time-hr">${hr}</div>
+        <div class="tl-time-dt">${dt}</div>
+      </div>
+      <div>
+        <div class="tl-card" style="border-color:var(--ok)">
+          <div class="tl-card-top">
+            <span class="tl-type">${tipo}</span>
+            <span class="chip chip-grey" style="font-size:10.5px">${canal}</span>
+            ${contBlock}
+            <span class="tl-op">por <strong>Priscilla P.</strong></span>
+          </div>
+          <div class="obs-block int"><div class="obs-lbl">🔒 Interno — somente Operações</div>${obs}</div>
+          ${msgBlock}
+        </div>
+      </div>
+    </div>`;
+
+  tl.insertAdjacentHTML('afterbegin', html);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => { tl.firstElementChild.style.opacity = '1'; });
+  });
+
+  // Reset filtro para "Todos"
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+  document.querySelector('.filter-chip').classList.add('on');
+  document.querySelectorAll('.tl-item').forEach(i => i.style.display = '');
+}
+
+function tipoTag(tipo) {
+  if (tipo.includes('Cliente'))  return 'cliente';
+  if (tipo.includes('Cartório') || tipo.includes('Cartorio')) return 'cartorio';
+  if (tipo.includes('Pagamento')) return 'pagamento';
+  return 'outros';
+}
+
+function inserirClienteStep(tipo, msg) {
+  const steps = document.querySelector('.cli-steps');
+  const now = new Date();
+  const dt = now.toLocaleDateString('pt-BR') + ' às ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const ico = tipo.includes('Pagamento') ? '💳' : tipo.includes('Cartório') || tipo.includes('Cartorio') ? '🏛️' : '📋';
+  const html = `
+    <div class="cli-step" style="opacity:0;transition:opacity .4s;border-color:var(--ok)">
+      <div class="cli-ico ok">${ico}</div>
+      <div class="cli-body">
+        <div class="cli-msg">${tipo}</div>
+        <div class="cli-dt">${dt}</div>
+        <div class="cli-sub">${msg}</div>
+      </div>
+    </div>`;
+  steps.insertAdjacentHTML('afterbegin', html);
+  requestAnimationFrame(() => requestAnimationFrame(() => { steps.firstElementChild.style.opacity = '1'; }));
+}
+
+// ── TOAST ───────────────────────────────────────────────
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INLINE ERROR ─────────────────────────────────────────
+function showError(msg) {
+  let el = document.getElementById('form-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'form-error';
+    el.style.cssText = 'background:var(--crit-lt);border:1px solid var(--crit);color:var(--crit);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:500;margin-bottom:10px;';
+    document.getElementById('panel-nova').insertAdjacentElement('afterbegin', el);
+  }
+  el.textContent = msg;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearError() {
+  const el = document.getElementById('form-error');
+  if (el) el.remove();
+}
+
+// hide footer initially only on hist tab (already active)
+document.getElementById('mfooter').hidden = true;
+// show when nova is shown — handled by goTab
+// on init tab is 'hist', footer hidden — correct
+</script>
+
+</body></html>
